@@ -36,7 +36,8 @@ grants  `sms-voice:*` and `mobiletargeting:*`  permissions to callers from  mana
 
 # Build and Deploy
 
-
+# Prequisites 
+This project assumes you have [AWS Organizations](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html) enabled.
 
 ### Install dependencies
 
