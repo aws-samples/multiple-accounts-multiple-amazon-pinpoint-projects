@@ -1,0 +1,4 @@
+#set ($outputString = $input.path('$.output'))
+#set ($outputObject = $util.parseJson($outputString))
+#set($context.responseOverride.status = $outputObject.status)
+$outputString

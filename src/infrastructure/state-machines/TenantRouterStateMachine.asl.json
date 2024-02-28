@@ -1,0 +1,682 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "Integration Request",
+  "States": {
+    "Integration Request": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload.$": "$",
+        "FunctionName": "${INTEGRATION_REQUEST_FN_ARN}"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DynamoDB GetItem"
+    },
+    "DynamoDB GetItem": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Parameters": {
+        "TableName": "${TABLE_NAME}",
+        "Key": {
+          "pk": {
+            "S.$": "$.path.tenantId"
+          }
+        },
+        "AttributesToGet": [
+          "accountId",
+          "region"
+        ]
+      },
+      "Next": "Was Tenant Found?",
+      "ResultPath": "$.getItemResult"
+    },
+    "Was Tenant Found?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.getItemResult.Item",
+          "IsPresent": true,
+          "Comment": "Tenant Found",
+          "Next": "Unmarshall"
+        }
+      ],
+      "Default": "Tenant Not Found"
+    },
+    "Tenant Not Found": {
+      "Type": "Pass",
+      "End": true,
+      "Result": {
+        "status": 404,
+        "error": {
+          "name": "TenantNotFoundException",
+          "message": "No tenant found"
+        }
+      }
+    },
+    "Unmarshall": {
+      "Type": "Pass",
+      "Parameters": {
+        "accountId.$": "$.getItemResult.Item.accountId.S",
+        "region.$": "$.getItemResult..Item.region.S",
+        "input.$": "$.input",
+        "tenantId.$": "$.path.tenantId",
+        "action.$": "$.path.action"
+      },
+      "Next": "Which Action?"
+    },
+    "Which Action?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.action",
+          "StringEquals": "SendTextMessage",
+          "Next": "Validate Input (SendTextMessage)",
+          "Comment": "SendTextMessage"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "DescribeConfigurationSets",
+          "Comment": "DescribeConfigurationSets",
+          "Next": "Validate Input (DescribeConfigurationSets)"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "DescribePools",
+          "Next": "Validate Input (DescribePools)",
+          "Comment": "DescribePools"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "DescribeRegistrationTypeDefinitions",
+          "Next": "Validate Input (DescribeRegistrationTypeDefinitions)",
+          "Comment": "DescribeRegistrationTypeDefinitions"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "DescribeRegistrationFieldDefinitions",
+          "Next": "Validate Input (DescribeRegistrationFieldDefinitions)",
+          "Comment": "DescribeRegistrationFieldDefinitions"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "CreateRegistration",
+          "Next": "Validate Input (CreateRegistration)",
+          "Comment": "CreateRegistration"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "DescribeRegistrations",
+          "Next": "Validate Input (DescribeRegistrations)",
+          "Comment": "DescribeRegistrations"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "PutRegistrationFieldValue",
+          "Next": "Validate Input (PutRegistrationFieldValue)",
+          "Comment": "PutRegistrationFieldValue"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "DescribeRegistrationFieldValues",
+          "Next": "Validate Input (DescribeRegistrationFieldValues)",
+          "Comment": "DescribeRegistrationFieldValues"
+        }
+      ],
+      "Default": "Action not found"
+    },
+    "Validate Input (DescribeRegistrationFieldValues)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [
+              "RegistrationId"
+            ],
+            "optional": [
+              "VersionNumber",
+              "SectionPath",
+              "FieldPaths",
+              "NextToken",
+              "MaxResults"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DescribeRegistrationFieldValues"
+    },
+    "Validate Input (PutRegistrationFieldValue)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [
+              "FieldValues",
+              "RegistrationId"
+            ],
+            "optional": []
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "For each Field Value"
+    },
+    "For each Field Value": {
+      "Type": "Map",
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "Validate Input (PutRegistrationFieldValueForField)",
+        "States": {
+          "Validate Input (PutRegistrationFieldValueForField)": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "OutputPath": "$.Payload",
+            "Parameters": {
+              "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+              "Payload": {
+                "accountId.$": "$.accountId",
+                "region.$": "$.region",
+                "input.$": "$.input",
+                "RegistrationId.$": "$.RegistrationId",
+                "definition": {
+                  "required": [
+                    "FieldPath"
+                  ],
+                  "optional": [
+                    "SelectChoices",
+                    "TextValue",
+                    "RegistrationAttachmentId"
+                  ]
+                }
+              }
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "Next": "PutRegistrationFieldValue"
+          },
+          "PutRegistrationFieldValue": {
+            "Type": "Task",
+            "End": true,
+            "Parameters": {
+              "FieldPath.$": "$.input.FieldPath",
+              "RegistrationId.$": "$.RegistrationId",
+              "SelectChoices.$": "$.input.SelectChoices",
+              "TextValue.$": "$.input.TextValue",
+              "RegistrationAttachmentId.$": "$.input.RegistrationAttachmentId"
+            },
+            "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:putRegistrationFieldValue",
+            "Credentials": {
+              "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+            }
+          }
+        }
+      },
+      "End": true,
+      "ItemsPath": "$.input.FieldValues",
+      "ItemSelector": {
+        "accountId.$": "$.accountId",
+        "region.$": "$.region",
+        "input.$": "$$.Map.Item.Value",
+        "RegistrationId.$": "$.input.RegistrationId"
+      }
+    },
+    "Validate Input (DescribeRegistrations)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [],
+            "optional": [
+              "RegistrationIds",
+              "Filters",
+              "NextToken",
+              "MaxResults"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DescribeRegistrations"
+    },
+    "Validate Input (CreateRegistration)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [
+              "RegistrationType"
+            ],
+            "optional": [
+              "Tags",
+              "ClientToken"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "CreateRegistration"
+    },
+    "Validate Input (DescribeRegistrationFieldDefinitions)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [
+              "RegistrationType"
+            ],
+            "optional": [
+              "SectionPath",
+              "FieldPaths",
+              "Filters",
+              "NextToken",
+              "MaxResults"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DescribeRegistrationFieldDefinitions"
+    },
+    "Validate Input (DescribeRegistrationTypeDefinitions)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [],
+            "optional": [
+              "RegistrationTypes",
+              "Filters",
+              "NextToken",
+              "MaxResults"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DescribeRegistrationTypeDefinitions"
+    },
+    "Validate Input (SendTextMessage)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [
+              "DestinationPhoneNumber",
+              "ConfigurationSetName"
+            ],
+            "optional": [
+              "OriginationIdentity",
+              "MessageBody",
+              "MessageType",
+              "Keyword",
+              "ConfigurationSetName",
+              "MaxPrice",
+              "TimeToLive",
+              "Context",
+              "DestinationCountryParameters",
+              "DryRun"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "SendTextMessage"
+    },
+    "SendTextMessage": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "DestinationPhoneNumber.$": "$.input.DestinationPhoneNumber",
+        "OriginationIdentity.$": "$.input.OriginationIdentity",
+        "MessageBody.$": "$.input.MessageBody",
+        "MessageType.$": "$.input.MessageType",
+        "Keyword.$": "$.input.Keyword",
+        "ConfigurationSetName.$": "$.input.ConfigurationSetName",
+        "MaxPrice.$": "$.input.MaxPrice",
+        "TimeToLive.$": "$.input.TimeToLive",
+        "Context.$": "$.input.Context",
+        "DestinationCountryParameters.$": "$.input.DestinationCountryParameters",
+        "DryRun.$": "$.input.DryRun"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:sendTextMessage",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      }
+    },
+    "Action not found": {
+      "Type": "Pass",
+      "End": true,
+      "Result": {
+        "status": 404,
+        "error": {
+          "name": "InvalidActionException",
+          "message": "No action found"
+        }
+      }
+    },
+    "Validate Input (DescribeConfigurationSets)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [],
+            "optional": [
+              "ConfigurationSetNames",
+              "Filters",
+              "NextToken",
+              "MaxResults"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DescribeConfigurationSets"
+    },
+    "DescribeConfigurationSets": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "ConfigurationSetNames.$": "$.input.ConfigurationSetNames",
+        "Filters.$": "$.input.Filters",
+        "NextToken.$": "$.input.NextToken",
+        "MaxResults.$": "$.input.MaxResults"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:describeConfigurationSets",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      }
+    },
+    "Validate Input (DescribePools)": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [],
+            "optional": [
+              "PoolIds",
+              "Filters",
+              "NextToken",
+              "MaxResults"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DescribePools"
+    },
+    "DescribePools": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "PoolIds.$": "$.input.PoolIds",
+        "Filters.$": "$.input.Filters",
+        "NextToken.$": "$.input.NextToken",
+        "MaxResults.$": "$.input.MaxResults"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:describePools",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      }
+    },
+    "DescribeRegistrationTypeDefinitions": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "RegistrationTypes.$": "$.input.RegistrationTypes",
+        "Filters.$": "$.input.Filters",
+        "NextToken.$": "$.input.NextToken",
+        "MaxResults.$": "$.input.MaxResults"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:describeRegistrationTypeDefinitions",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      }
+    },
+    "DescribeRegistrationFieldDefinitions": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "RegistrationType.$": "$.input.RegistrationType",
+        "SectionPath.$": "$.input.SectionPath",
+        "FieldPaths.$": "$.input.FieldPaths",
+        "NextToken.$": "$.input.NextToken",
+        "MaxResults.$": "$.input.MaxResults"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:describeRegistrationFieldDefinitions",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      }
+    },
+    "CreateRegistration": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "RegistrationType.$": "$.input.RegistrationType",
+        "Tags.$": "$.input.Tags",
+        "ClientToken.$": "$.input.ClientToken"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:createRegistration",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      }
+    },
+    "DescribeRegistrations": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "RegistrationIds.$": "$.input.RegistrationIds",
+        "Filters.$": "$.input.Filters",
+        "NextToken.$": "$.input.NextToken",
+        "MaxResults.$": "$.input.MaxResults"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:describeRegistrations",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      }
+    },
+    "DescribeRegistrationFieldValues": {
+      "Type": "Task",
+      "End": true,
+      "Parameters": {
+        "RegistrationId.$": "$.input.RegistrationId",
+        "VersionNumber.$": "$.input.VersionNumber",
+        "SectionPath.$": "$.input.SectionPath",
+        "FieldPaths.$": "$.input.FieldPaths",
+        "NextToken.$": "$.input.NextToken",
+        "MaxResults.$": "$.input.MaxResults"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:describeRegistrationFieldValues",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      }
+    }
+  }
+}
