@@ -20,6 +20,50 @@ import {onEventHandler} from "../../src/runtime/IntegrationRequest";
 
 
 describe('IntegrationRequest', () => {
+	it("CreateRegistration", async () => {
+		const event = {
+			"body": {
+				"RegistrationType": "US_TEN_DLC_BRAND_REGISTRATION",
+				"Tags.ignore": [
+					{
+						"Key": "Name",
+						"Value": "Brand1"
+					}
+				]
+			},
+			"path": {
+				"tenantId": "my-tenant-id",
+				"action": "CreateRegistration"
+			}
+		}
+		const response = await onEventHandler(event, {},
+			//@ts-ignore
+			(_error?, _result?) => {
+			})
+		expect(response).toEqual({
+			"input": [
+				{
+					"Key": "RegistrationType",
+					"Value": "US_TEN_DLC_BRAND_REGISTRATION"
+
+				},
+				{
+					"Key": "Tags",
+					"Value": [
+						{
+							"Key": "Name",
+							"Value": "Brand1",
+						},
+					]
+				}
+			],
+			"path": {
+				"tenantId": "my-tenant-id",
+				"action": "CreateRegistration"
+			}
+		})
+
+	})
 	it("DescribeRegistrationTypeDefinitions", async () => {
 		const event = {
 			"body": {
@@ -32,11 +76,11 @@ describe('IntegrationRequest', () => {
 				"action": "DescribeRegistrationTypeDefinitions"
 			}
 		}
-		const reponse = await onEventHandler(event, {},
+		const response = await onEventHandler(event, {},
 			//@ts-ignore
 			(_error?, _result?) => {
 			})
-		expect(reponse).toEqual({
+		expect(response).toEqual({
 			"input": [
 				{
 					"Key": "RegistrationTypes",
@@ -76,7 +120,7 @@ describe('IntegrationRequest', () => {
 			//@ts-ignore
 			(_error?, _result?) => {
 			})
-		expect(response).toEqual( {
+		expect(response).toEqual({
 			"input": [
 				{
 					"Key": "RegistrationId",
