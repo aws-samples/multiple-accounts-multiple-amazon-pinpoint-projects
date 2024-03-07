@@ -49,7 +49,7 @@ export class CognitoAuthorization extends Construct implements IDependable {
 					messages.push("You must specify customDomain if hostedZone is set")
 				}
 
-				if (config.apiTempPassword != undefined && !new RegExp("(?=^.{9,}$)(?=.*\\d)(?=.*[!@#$%^&*-_]+)(?![.\\n])(?=.*[A-Z])(?=.*[a-z]).*$").test(config.apiTempPassword)) {
+				if (config.apiTempPassword != undefined && !new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\\$%\\^&\\*])(.{9,})$").test(config.apiTempPassword)) {
 					messages.push("The temp password for the API admin user must be at least 9 characters long, include digits, both lower and uppercase letters as well as symbols.")
 				}
 

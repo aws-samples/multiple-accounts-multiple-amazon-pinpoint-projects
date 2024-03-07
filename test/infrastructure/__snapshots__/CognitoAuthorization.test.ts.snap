@@ -1,0 +1,354 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CognitoAuthorization > Works when all conditions are met 1`] = `
+{
+  "Outputs": {
+    "ApiAdminTempPassword": {
+      "Value": "123$aDCEF",
+    },
+    "ApiAdminUsername": {
+      "Value": "admin",
+    },
+    "ClientCredentialsClientId": {
+      "Value": {
+        "Ref": "CognitoAuthorizationUserPoolClientCredentialsClient93F10DFB",
+      },
+    },
+    "ImplicitClientId": {
+      "Value": {
+        "Ref": "CognitoAuthorizationUserPoolImplicitClient943D320D",
+      },
+    },
+  },
+  "Parameters": {
+    "BootstrapVersion": {
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
+      "Type": "AWS::SSM::Parameter::Value<String>",
+    },
+  },
+  "Resources": {
+    "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+      "DependsOn": [
+        "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
+          },
+          "S3Key": "ed6cd104ff5f101d06dae8cb2b87cc6e6d69b9a22055b467ea6cae10ff023023.zip",
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs18.x",
+        "Timeout": 120,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "CognitoAuthorizationAdminGroupAA27478A": {
+      "Properties": {
+        "Description": "Administrator",
+        "GroupName": "Admin",
+        "UserPoolId": {
+          "Ref": "CognitoAuthorizationUserPool4ABAC7A6",
+        },
+      },
+      "Type": "AWS::Cognito::UserPoolGroup",
+    },
+    "CognitoAuthorizationAdminSetUserPassword520C94C0": {
+      "DeletionPolicy": "Delete",
+      "DependsOn": [
+        "CognitoAuthorizationAdminSetUserPasswordCustomResourcePolicyC5B16053",
+        "CognitoAuthorizationAdminUser043054DC",
+      ],
+      "Properties": {
+        "Create": {
+          "Fn::Join": [
+            "",
+            [
+              "{"service":"CognitoIdentityServiceProvider","action":"adminSetUserPassword","parameters":{"UserPoolId":"",
+              {
+                "Ref": "CognitoAuthorizationUserPool4ABAC7A6",
+              },
+              "","Username":"admin","Password":"123$aDCEF","Permanent":false},"physicalResourceId":{"id":"AdminSetUserPassword"}}",
+            ],
+          ],
+        },
+        "InstallLatestAwsSdk": true,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::AWS",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "CognitoAuthorizationAdminSetUserPasswordCustomResourcePolicyC5B16053": {
+      "DependsOn": [
+        "CognitoAuthorizationAdminUser043054DC",
+      ],
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "cognito-idp:AdminSetUserPassword",
+              "Effect": "Allow",
+              "Resource": "*",
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "CognitoAuthorizationAdminSetUserPasswordCustomResourcePolicyC5B16053",
+        "Roles": [
+          {
+            "Ref": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "CognitoAuthorizationAdminUser043054DC": {
+      "Properties": {
+        "UserPoolId": {
+          "Ref": "CognitoAuthorizationUserPool4ABAC7A6",
+        },
+        "Username": "admin",
+      },
+      "Type": "AWS::Cognito::UserPoolUser",
+    },
+    "CognitoAuthorizationAdminUserGroupAttachmentBDB815E4": {
+      "DependsOn": [
+        "CognitoAuthorizationAdminGroupAA27478A",
+        "CognitoAuthorizationAdminUser043054DC",
+      ],
+      "Properties": {
+        "GroupName": "Admin",
+        "UserPoolId": {
+          "Ref": "CognitoAuthorizationUserPool4ABAC7A6",
+        },
+        "Username": "admin",
+      },
+      "Type": "AWS::Cognito::UserPoolUserToGroupAttachment",
+    },
+    "CognitoAuthorizationUserPool4ABAC7A6": {
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "AccountRecoverySetting": {
+          "RecoveryMechanisms": [
+            {
+              "Name": "verified_phone_number",
+              "Priority": 1,
+            },
+            {
+              "Name": "verified_email",
+              "Priority": 2,
+            },
+          ],
+        },
+        "AdminCreateUserConfig": {
+          "AllowAdminCreateUserOnly": true,
+        },
+        "EmailVerificationMessage": "The verification code to your new account is {####}",
+        "EmailVerificationSubject": "Verify your new account",
+        "Policies": {
+          "PasswordPolicy": {
+            "MinimumLength": 9,
+            "RequireLowercase": true,
+            "RequireNumbers": true,
+            "RequireSymbols": true,
+            "RequireUppercase": true,
+            "TemporaryPasswordValidityDays": 1,
+          },
+        },
+        "SmsVerificationMessage": "The verification code to your new account is {####}",
+        "UserPoolAddOns": {
+          "AdvancedSecurityMode": "ENFORCED",
+        },
+        "UserPoolName": "pinpoint-management-account-user-pool",
+        "VerificationMessageTemplate": {
+          "DefaultEmailOption": "CONFIRM_WITH_CODE",
+          "EmailMessage": "The verification code to your new account is {####}",
+          "EmailSubject": "Verify your new account",
+          "SmsMessage": "The verification code to your new account is {####}",
+        },
+      },
+      "Type": "AWS::Cognito::UserPool",
+      "UpdateReplacePolicy": "Retain",
+    },
+    "CognitoAuthorizationUserPoolApiResourceServer157544EA": {
+      "Properties": {
+        "Identifier": "api",
+        "Name": "ApiResourceServer",
+        "Scopes": [
+          {
+            "ScopeDescription": "Admin Scope",
+            "ScopeName": "Admin",
+          },
+        ],
+        "UserPoolId": {
+          "Ref": "CognitoAuthorizationUserPool4ABAC7A6",
+        },
+      },
+      "Type": "AWS::Cognito::UserPoolResourceServer",
+    },
+    "CognitoAuthorizationUserPoolClientCredentialsClient93F10DFB": {
+      "Properties": {
+        "AllowedOAuthFlows": [
+          "client_credentials",
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "Ref": "CognitoAuthorizationUserPoolApiResourceServer157544EA",
+                },
+                "/Admin",
+              ],
+            ],
+          },
+        ],
+        "CallbackURLs": [
+          "https://oauth.pstmn.io/v1/callback",
+        ],
+        "ClientName": "pinpoint-management-account-user-pool-client-credentials-client",
+        "ExplicitAuthFlows": [
+          "ALLOW_USER_PASSWORD_AUTH",
+          "ALLOW_REFRESH_TOKEN_AUTH",
+        ],
+        "GenerateSecret": true,
+        "SupportedIdentityProviders": [
+          "COGNITO",
+        ],
+        "UserPoolId": {
+          "Ref": "CognitoAuthorizationUserPool4ABAC7A6",
+        },
+      },
+      "Type": "AWS::Cognito::UserPoolClient",
+    },
+    "CognitoAuthorizationUserPoolCognitoDomain183E3ADA": {
+      "Properties": {
+        "Domain": {
+          "Fn::Join": [
+            "",
+            [
+              "sms-",
+              {
+                "Ref": "AWS::AccountId",
+              },
+            ],
+          ],
+        },
+        "UserPoolId": {
+          "Ref": "CognitoAuthorizationUserPool4ABAC7A6",
+        },
+      },
+      "Type": "AWS::Cognito::UserPoolDomain",
+    },
+    "CognitoAuthorizationUserPoolImplicitClient943D320D": {
+      "Properties": {
+        "AllowedOAuthFlows": [
+          "implicit",
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "Ref": "CognitoAuthorizationUserPoolApiResourceServer157544EA",
+                },
+                "/Admin",
+              ],
+            ],
+          },
+        ],
+        "CallbackURLs": [
+          "https://oauth.pstmn.io/v1/callback",
+        ],
+        "ClientName": "pinpoint-management-account-user-pool-implicit-client",
+        "ExplicitAuthFlows": [
+          "ALLOW_USER_PASSWORD_AUTH",
+          "ALLOW_REFRESH_TOKEN_AUTH",
+        ],
+        "SupportedIdentityProviders": [
+          "COGNITO",
+        ],
+        "UserPoolId": {
+          "Ref": "CognitoAuthorizationUserPool4ABAC7A6",
+        },
+      },
+      "Type": "AWS::Cognito::UserPoolClient",
+    },
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                  ],
+                  {
+                    "Ref": "BootstrapVersion",
+                  },
+                ],
+              },
+            ],
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI.",
+        },
+      ],
+    },
+  },
+}
+`;
