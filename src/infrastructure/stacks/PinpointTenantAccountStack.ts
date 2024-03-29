@@ -38,6 +38,11 @@ export class PinpointTenantAccountStack extends Stack {
 			url: GIT_REPO_URL
 		}).waitFor(tenant)
 		Tags.of(this).add("Timestamp", new Date().toISOString());
+		Tags.of(this).add("Solution", "multiple-accounts-multiple-amazon-pinpoint-projects");
+		Tags.of(this).add(
+			"Url",
+			"https://github.com/aws-samples/multiple-accounts-multiple-amazon-pinpoint-projects",
+		);
 		this.cdkNagSuppressions();
 	}
 
