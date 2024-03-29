@@ -15,7 +15,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {Stack, StackProps} from "aws-cdk-lib";
+import {Stack, StackProps, Tags} from "aws-cdk-lib";
 import {PinpointManagementAccount, PinpointManagementAccountConfig} from "../constructs/PinpointManagementAccount";
 import {NagSuppressions} from "cdk-nag";
 import {ProjectUsage} from "../constructs/ProjectUsage";
@@ -38,6 +38,11 @@ export class PinpointManagementAccountStack extends Stack {
 			name: PROJECT_NAME,
 			url: GIT_REPO_URL
 		}).waitFor(managment)
+		Tags.of(this).add("Solution", PROJECT_NAME);
+		Tags.of(this).add(
+			"Url",
+			GIT_REPO_URL,
+		);
 		this.cdkNagSuppressions()
 	}
 
