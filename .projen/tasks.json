@@ -117,6 +117,9 @@
     "eslint": {
       "name": "eslint",
       "description": "Runs eslint against the codebase",
+      "env": {
+        "ESLINT_USE_FLAT_CONFIG": "false"
+      },
       "steps": [
         {
           "exec": "eslint --ext .ts,.tsx --fix --no-error-on-unmatched-pattern $@ src/runtime src/infrastructure test projenrc .projenrc.ts",
@@ -203,7 +206,7 @@
       },
       "steps": [
         {
-          "exec": "pnpm dlx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev,peer,prod,optional --filter=@aws-cdk/aws-kinesisfirehose-alpha,@aws-cdk/aws-kinesisfirehose-destinations-alpha,@types/npm-packlist,cdk-assets,esbuild,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,prettier,projen,ts-node,ts-sinon,typescript,@aws-sdk/client-dynamodb,@aws-sdk/client-eventbridge,@aws-sdk/client-pinpoint-sms-voice-v2,@aws-sdk/client-rds-data,@aws-sdk/client-s3,@aws-sdk/client-sts,@aws-sdk/util-dynamodb,@types/aws-lambda,aws-xray-sdk"
+          "exec": "pnpm dlx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@aws-cdk/aws-kinesisfirehose-alpha,@aws-cdk/aws-kinesisfirehose-destinations-alpha,@types/npm-packlist,cdk-assets,esbuild,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,prettier,projen,ts-node,ts-sinon,typescript,@aws-sdk/client-dynamodb,@aws-sdk/client-eventbridge,@aws-sdk/client-pinpoint-sms-voice-v2,@aws-sdk/client-rds-data,@aws-sdk/client-s3,@aws-sdk/client-sts,@aws-sdk/util-dynamodb,@types/aws-lambda,aws-xray-sdk"
         },
         {
           "exec": "pnpm i --no-frozen-lockfile"
