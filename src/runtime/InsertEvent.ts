@@ -45,7 +45,30 @@ const tracer = new Tracer({
 	captureHTTPsRequests: true,
 });
 
-
+/*
+{
+  "eventType": "TEXT_BLOCKED",
+  "eventVersion": "1.0",
+  "eventTimestamp": 1737550671501,
+  "isFinal": true,
+  "destinationPhoneNumber": "+15707724799",
+  "isoCountryCode": "US",
+  "messageId": "1fdc2c24-69f6-458d-9e15-3d6f5e14f703",
+  "messageRequestTimestamp": 1737550671412,
+  "messageEncoding": "GSM",
+  "messageType": "TRANSACTIONAL",
+  "messageStatus": "BLOCKED",
+  "messageStatusDescription": "Phone has blocked SMS",
+  "totalMessageParts": 4,
+  "totalMessagePrice": 0,
+  "totalCarrierFee": 0,
+  "protectConfiguration": {
+    "protectConfigurationId": "protect-554ac06243454290818970dcc518f467",
+    "protectStatus": "ALLOW"
+  },
+  "accountId": "200982613275"
+}
+ */
 interface EndUserMessagingEvent {
 	eventType: string,
 	eventVersion: string,
@@ -201,7 +224,7 @@ async function processEndUserMessagingEvent(event: EndUserMessagingEvent, aws: A
 			{name: 'eventVersion', value: {stringValue: event.eventVersion}},
 			{name: 'eventTimestamp', value: {stringValue: formatTimestamp(event.eventTimestamp)}, typeHint: "TIMESTAMP"},
 			{name: 'isFinal', value: {booleanValue: event.isFinal}},
-			{name: 'originationPhoneNumber', value: {stringValue: event.originationPhoneNumber}},
+			{name: 'originationPhoneNumber', value: event.originationPhoneNumber ? {stringValue: event.originationPhoneNumber} : {isNull: true} },
 			{name: 'destinationPhoneNumber', value: {stringValue: event.destinationPhoneNumber}},
 			{name: 'isoCountryCode', value: {stringValue: event.isoCountryCode}},
 			{name: 'messageId', value: {stringValue: event.messageId}},
