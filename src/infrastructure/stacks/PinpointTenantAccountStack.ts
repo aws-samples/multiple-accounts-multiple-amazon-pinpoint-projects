@@ -18,16 +18,16 @@
 import { Stack, StackProps, Tags } from "aws-cdk-lib";
 
 import {
-  PinpointTenantAccount,
-  PinpointTenantAccountConfig,
+	PinpointTenantAccount,
+	PinpointTenantAccountConfig,
 } from "../constructs/PinpointTenantAccount";
-import {NagSuppressions} from "cdk-nag";
+// import {NagSuppressions} from "cdk-nag";
 import {ProjectUsage} from "../constructs/ProjectUsage";
 import {GIT_REPO_URL, PROJECT_NAME} from "../../index";
 
 export interface PinpointTenantAccountStackProps
-  extends StackProps,
-    PinpointTenantAccountConfig {}
+	extends StackProps,
+		PinpointTenantAccountConfig {}
 
 export class PinpointTenantAccountStack extends Stack {
 	constructor(scope: any, id: string, props: PinpointTenantAccountStackProps) {
@@ -38,36 +38,31 @@ export class PinpointTenantAccountStack extends Stack {
 			url: GIT_REPO_URL
 		}).waitFor(tenant)
 		Tags.of(this).add("Timestamp", new Date().toISOString());
-		Tags.of(this).add("Solution", PROJECT_NAME);
-		Tags.of(this).add(
-			"Url",
-			GIT_REPO_URL,
-		);
-		this.cdkNagSuppressions();
+		// this.cdkNagSuppressions();
 	}
 
-  private cdkNagSuppressions() {
-    NagSuppressions.addStackSuppressions(this, [
-      {
-        id: "AwsSolutions-L1",
-        reason: "Manually managing runtimes",
-      },
-      {
-        id: "AwsSolutions-IAM5",
-        reason: "Wildcard permissions allowed because the roles are scope with conditions or account principals",
-      },
-      {
-        id: "AwsSolutions-IAM4",
-        reason: "Managed policies ok",
-      }
-
-    ]);
-    NagSuppressions.addResourceSuppressionsByPath(this,"/PinpointTenantAccountStack/PinpointTenantAccount/PinpointTenantRegistrationRuleDLQ/Resource",[{
-
-        id: "AwsSolutions-SQS3",
-        reason: "This is a DLQ for an EventBridge EventBus",
-
-    }])
-
-  }
+	// private cdkNagSuppressions() {
+	//   NagSuppressions.addStackSuppressions(this, [
+	//     {
+	//       id: "AwsSolutions-L1",
+	//       reason: "Manually managing runtimes",
+	//     },
+	//     {
+	//       id: "AwsSolutions-IAM5",
+	//       reason: "Wildcard permissions allowed because the roles are scope with conditions or account principals",
+	//     },
+	//     {
+	//       id: "AwsSolutions-IAM4",
+	//       reason: "Managed policies ok",
+	//     }
+	//
+	//   ]);
+	//   NagSuppressions.addResourceSuppressionsByPath(this,"/PinpointTenantAccountStack/PinpointTenantAccount/PinpointTenantRegistrationRuleDLQ/Resource",[{
+	//
+	//       id: "AwsSolutions-SQS3",
+	//       reason: "This is a DLQ for an EventBridge EventBus",
+	//
+	//   }])
+	//
+	// }
 }

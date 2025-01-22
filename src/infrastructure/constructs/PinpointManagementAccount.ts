@@ -21,16 +21,22 @@ import {AttributeType, BillingMode, Table, TableEncryption,} from "aws-cdk-lib/a
 import {EventBus, Rule} from "aws-cdk-lib/aws-events";
 
 import {SqsQueue} from "aws-cdk-lib/aws-events-targets";
-import {AnyPrincipal, Effect, OrganizationPrincipal, PolicyStatement,} from "aws-cdk-lib/aws-iam";
+import {AnyPrincipal, Effect, OrganizationPrincipal, PolicyStatement, ServicePrincipal,} from "aws-cdk-lib/aws-iam";
 import {Runtime, Tracing} from "aws-cdk-lib/aws-lambda";
 import {SqsEventSource} from "aws-cdk-lib/aws-lambda-event-sources";
 import {NodejsFunction} from "aws-cdk-lib/aws-lambda-nodejs";
 import {LogGroup, RetentionDays} from "aws-cdk-lib/aws-logs";
-import {BlockPublicAccess, Bucket} from "aws-cdk-lib/aws-s3";
+import {BlockPublicAccess, Bucket, EventType} from "aws-cdk-lib/aws-s3";
 import {Queue, QueueEncryption} from "aws-cdk-lib/aws-sqs";
 import {Construct} from "constructs";
 import {PinpointApiProxy} from "./PinpointApiProxy";
 import {REGISTRATION_EVENT_DETAIL_TYPE, REGISTRATION_EVENT_SOURCE} from "../../index";
+
+import {SnsDestination} from "aws-cdk-lib/aws-s3-notifications";
+import {Topic} from "aws-cdk-lib/aws-sns";
+import {SqsSubscription} from "aws-cdk-lib/aws-sns-subscriptions";
+import {FlowLogDestination, FlowLogTrafficType, GatewayVpcEndpointAwsService, Port, SecurityGroup, SubnetType, Vpc} from "aws-cdk-lib/aws-ec2";
+import {Database} from "./Database";
 
 
 export interface PinpointManagementAccountConfig {
@@ -58,6 +64,43 @@ export class PinpointManagementAccount extends Construct {
 		config: PinpointManagementAccountConfig,
 	) {
 		super(scope, id);
+		//flow logs for vpc
+		const flowLogGroup = new LogGroup(this, "PinpointManagementAccountFlowLogGroup", {
+			retention: RetentionDays.ONE_MONTH,
+		});
+		//create a vpc with three private subnets
+		const vpc = new Vpc(this, "Vpc", {
+			maxAzs: 3,
+			subnetConfiguration: [{
+				name: "Private",
+				subnetType: SubnetType.PRIVATE_ISOLATED,
+				cidrMask: 24,
+			}],
+			flowLogs: {
+				"PinpointManagementAccountFlowLog": {
+					destination: FlowLogDestination.toCloudWatchLogs(flowLogGroup),
+					trafficType: FlowLogTrafficType.ALL
+				}
+			},
+			gatewayEndpoints: {
+				S3: {
+					service: GatewayVpcEndpointAwsService.S3,
+					// Optional: You can specify which subnets to associate with the endpoint
+					subnets: [{
+						subnetType: SubnetType.PRIVATE_ISOLATED
+					}]
+				}
+			}
+		});
+
+
+		//create an aurora serverless v2 instance
+		const defaultDatabaseName = 'EndUserMessaging'
+		const database = new Database(this, "Database", {
+			vpc: vpc,
+			defaultDatabaseName
+		})
+
 		const pinpointTenantsTable = new Table(this, "PinpointTenantsTable", {
 			tableName: "PinpointTenantsTable",
 			partitionKey: {
@@ -81,9 +124,68 @@ export class PinpointManagementAccount extends Construct {
 			blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
 			bucketName: `pinpoint-event-stream-data-${Aws.ACCOUNT_ID}-${Aws.REGION}`,
 			serverAccessLogsBucket: accessLogsBucket,
-			enforceSSL: true
+			enforceSSL: true,
+
+		});
+		const eventTopic = new Topic(this, 'EventTopic', {
+			displayName: 'S3 Event Topic',
+			topicName: 'event-topic',
+			enforceSSL: true,
 		});
 
+
+		eventTopic.addToResourcePolicy(
+			new PolicyStatement({
+				effect: Effect.ALLOW,
+				principals: [new ServicePrincipal('s3.amazonaws.com')],
+				actions: ['sns:Publish'],
+				resources: [eventTopic.topicArn],
+				conditions: {
+					'ArnLike': {
+						'aws:SourceArn': this.eventBucket.bucketArn
+					},
+					'StringEquals': {
+						'aws:SourceAccount': Aws.ACCOUNT_ID
+					}
+				}
+			})
+		);
+
+
+		const snsDestination = new SnsDestination(eventTopic)
+		this.eventBucket.addEventNotification(EventType.OBJECT_CREATED, snsDestination)
+		const eventQueueDLQ = new Queue(this, "EventQueueDLQ", {
+			removalPolicy: RemovalPolicy.DESTROY,
+			visibilityTimeout: Duration.seconds(30),
+			encryption: QueueEncryption.SQS_MANAGED,
+			enforceSSL: true
+		});
+		const eventQueue = new Queue(this, "EventQueue", {
+			removalPolicy: RemovalPolicy.DESTROY,
+			visibilityTimeout: Duration.seconds(30),
+			encryption: QueueEncryption.SQS_MANAGED,
+			enforceSSL: true,
+			deadLetterQueue: {
+				maxReceiveCount: 10,
+				queue: eventQueueDLQ
+			}
+		});
+		// Subscribe the queue to the topic
+		eventTopic.addSubscription(new SqsSubscription(eventQueue));
+		// Grant the SNS topic permission to send messages to the queue
+		eventQueue.addToResourcePolicy(
+			new PolicyStatement({
+				effect: Effect.ALLOW,
+				principals: [new ServicePrincipal('sns.amazonaws.com')],
+				actions: ['sqs:SendMessage'],
+				resources: [eventQueue.queueArn],
+				conditions: {
+					'ArnLike': {
+						'aws:SourceArn': eventTopic.topicArn
+					}
+				}
+			})
+		);
 		this.eventBus = new EventBus(this, "PinpointTenantRegistrarBus", {
 			eventBusName: "PinpointTenantRegistrarBus",
 		});
@@ -99,6 +201,68 @@ export class PinpointManagementAccount extends Construct {
 		const logGroup = new LogGroup(this, "TenantRegistrarFnLogGroup", {
 			retention: RetentionDays.ONE_MONTH,
 		});
+		const lambdaSecurityGroup = new SecurityGroup(this, "LambdaSecurityGroup", {
+			allowAllOutbound: true,
+			vpc
+		})
+		const insertEventFunction = new NodejsFunction(
+			this,
+			"InsertEventFn",
+			{
+				description: "InsertEvent Function",
+				memorySize: 256,
+				timeout: Duration.seconds(180),
+				runtime: Runtime.NODEJS_LATEST,
+				handler: "index.onEvent",
+				entry: path.join(
+					__dirname,
+					"..",
+					"..",
+					"runtime",
+					"InsertEvent.ts",
+				),
+				vpc: vpc,
+				vpcSubnets: {
+					subnetType: SubnetType.PRIVATE_ISOLATED
+				},
+				securityGroups: [lambdaSecurityGroup],
+				logGroup: logGroup,
+				environment: {
+					LOG_LEVEL: "DEBUG",
+					EVENT_BUCKET_NAME: this.eventBucket.bucketName,
+					DB_CLUSTER_ARN: database.cluster.clusterArn,
+					DB_SECRET_ARN: database.cluster.secret?.secretArn as string,
+					DB_NAME: defaultDatabaseName
+				},
+				tracing: Tracing.ACTIVE,
+				initialPolicy: [
+					new PolicyStatement({
+						effect: Effect.ALLOW,
+						resources: [this.eventBucket.bucketArn],
+						actions: ["s3:*Object"],
+					}),
+					new PolicyStatement({
+						effect: Effect.ALLOW,
+						actions: [
+							'rds-data:ExecuteStatement',
+							'rds-data:BatchExecuteStatement',
+							'rds-data:BeginTransaction',
+							'rds-data:CommitTransaction',
+							'rds-data:RollbackTransaction'
+						],
+						resources: [database.cluster.clusterArn]
+					})
+				],
+			},
+		);
+		database.dbSecurityGroup.addIngressRule(lambdaSecurityGroup, Port.tcp(database.cluster.clusterEndpoint.port), `Allow lambda connections to port: ${database.cluster.clusterEndpoint.port}`)
+		insertEventFunction.addEventSource(new SqsEventSource(eventQueue, {
+			batchSize: 10, // Number of messages to process in one batch
+			maxBatchingWindow: Duration.seconds(30), // Wait up to 30 seconds to gather messages
+			reportBatchItemFailures: true, // Enables partial batch responses
+		}))
+		this.eventBucket.grantRead(insertEventFunction);
+		database.cluster.secret?.grantRead(insertEventFunction);
 		const tenantRegistrarFunction = new NodejsFunction(
 			this,
 			"TenantRegistrarFn",
@@ -137,7 +301,9 @@ export class PinpointManagementAccount extends Construct {
 		const registrationDLQ = new Queue(this, "RegistrationDLQ", {
 			removalPolicy: RemovalPolicy.DESTROY,
 			visibilityTimeout: Duration.seconds(30),
-			encryption:QueueEncryption.SQS_MANAGED
+			encryption: QueueEncryption.SQS_MANAGED,
+			enforceSSL: true
+
 		});
 		registrationDLQ.addToResourcePolicy(new PolicyStatement({
 			effect: Effect.DENY,
@@ -158,7 +324,7 @@ export class PinpointManagementAccount extends Construct {
 				queue: registrationDLQ,
 				maxReceiveCount: 10,
 			},
-			encryption:QueueEncryption.SQS_MANAGED
+			encryption: QueueEncryption.SQS_MANAGED
 		});
 		registrationQueue.addToResourcePolicy(new PolicyStatement({
 			effect: Effect.DENY,
@@ -202,7 +368,10 @@ export class PinpointManagementAccount extends Construct {
 		});
 		new PinpointApiProxy(this, "PinpointApiProxy", {
 			pinpointTenantsTable: pinpointTenantsTable,
-			...config.api
+			...config.api,
+			database,
+			vpc,
+			lambdaSecurityGroup
 		})
 		new CfnOutput(this, "EventBusOutput", {
 			key: "EventBusArn",

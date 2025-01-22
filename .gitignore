@@ -34,6 +34,7 @@ jspm_packages/
 *.iml
 .$*
 appsec
+!/.npmrc
 !/test/
 !/tsconfig.json
 !/tsconfig.dev.json

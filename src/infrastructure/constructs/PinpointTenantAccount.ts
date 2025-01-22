@@ -15,10 +15,10 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {DeliveryStream, StreamEncryption} from "@aws-cdk/aws-kinesisfirehose-alpha";
-import {S3Bucket} from "@aws-cdk/aws-kinesisfirehose-destinations-alpha";
+import {DeliveryStream} from "@aws-cdk/aws-kinesisfirehose-alpha";
+
 import {EventType, MessageType} from "@aws-sdk/client-pinpoint-sms-voice-v2";
-import {Aws, Duration, RemovalPolicy, Size} from "aws-cdk-lib";
+import {Aws, Duration, RemovalPolicy} from "aws-cdk-lib";
 import {EventBus, IEventBus, IRule, Rule} from "aws-cdk-lib/aws-events";
 import {EventBus as EventBusTarget} from "aws-cdk-lib/aws-events-targets";
 import {AccountPrincipal, AnyPrincipal, Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal,} from "aws-cdk-lib/aws-iam";
@@ -34,6 +34,7 @@ import {PhonePool} from "./PhonePool";
 import {TenantRegistration} from "./TenantRegistration";
 import {Queue, QueueEncryption} from "aws-cdk-lib/aws-sqs";
 import {REGISTRATION_EVENT_DETAIL_TYPE, REGISTRATION_EVENT_SOURCE} from "../../index";
+import {CfnDeliveryStream} from "aws-cdk-lib/aws-kinesisfirehose";
 
 
 export interface PhonePoolWithNumbersConfig {
@@ -78,7 +79,7 @@ export class PinpointTenantAccount extends Construct {
 		const eventDestination = configurationSet.getEventDestination(
 			`${config.configurationSet.eventDestination.eventDestinationName}-Firehose`,
 		) as KinesisFirehoseEventDestination | undefined;
-		const [eventBus,rule] = this.createEventBus(config);
+		const [eventBus, rule] = this.createEventBus(config);
 		new Role(this, "ManagementAccountAccessRole", {
 			assumedBy: new AccountPrincipal(config.managementAccountId),
 			roleName: "PinpointManagementAccountAccessRole",
@@ -123,7 +124,7 @@ export class PinpointTenantAccount extends Construct {
 		const registrationDLQ = new Queue(this, "PinpointTenantRegistrationRuleDLQ", {
 			removalPolicy: RemovalPolicy.DESTROY,
 			visibilityTimeout: Duration.seconds(30),
-			encryption:QueueEncryption.SQS_MANAGED
+			encryption: QueueEncryption.SQS_MANAGED
 		});
 		registrationDLQ.addToResourcePolicy(new PolicyStatement({
 			effect: Effect.DENY,
@@ -328,25 +329,32 @@ export class PinpointTenantAccount extends Construct {
 			},
 		);
 
-		const deliveryStream = new DeliveryStream(
+		const deliveryStreamCfn = new CfnDeliveryStream(
 			this,
-			"DefaultFirehoseDeliveryStream",
+			"DefaultFirehoseDeliveryStreamCfn",
 			{
-				encryption: StreamEncryption.AWS_OWNED,
-				destinations: [
-					new S3Bucket(bucket, {
-						dataOutputPrefix: `accountId=${Aws.ACCOUNT_ID}/date=!{timestamp:yyyy-MM-dd}/`,
-						errorOutputPrefix: `${config.tenantId}/errors/accountId=${Aws.ACCOUNT_ID}/date=!{timestamp:yyyy-MM-dd}/hour=!{timestamp:HH}/!{firehose:error-output-type}/`,
-						role: managementAccountEventStreamingBucketWriterRole,
-						bufferingInterval: Duration.seconds(60),
-						bufferingSize: Size.mebibytes(1),
-						logging: true
-					}),
-				],
-
-			},
+				deliveryStreamType: "DirectPut",
+				deliveryStreamEncryptionConfigurationInput: {
+					keyType: "AWS_OWNED_CMK"
+				},
+				extendedS3DestinationConfiguration: {
+					bucketArn: bucket.bucketArn,
+					roleArn: managementAccountEventStreamingBucketWriterRole.roleArn,
+					prefix: `accountId=${Aws.ACCOUNT_ID}/date=!{timestamp:yyyy-MM-dd}/`,
+					errorOutputPrefix: `${config.tenantId}/errors/accountId=${Aws.ACCOUNT_ID}/date=!{timestamp:yyyy-MM-dd}/hour=!{timestamp:HH}/!{firehose:error-output-type}/`,
+					bufferingHints: {
+						intervalInSeconds: 60,
+						sizeInMBs: 1
+					},
+					cloudWatchLoggingOptions: {
+						enabled: true,
+						logGroupName: `/aws/kinesisfirehose/DefaultFirehoseDeliveryStream`,
+						logStreamName: "S3Delivery"
+					}
+				}
+			}
 		);
-		managementAccountEventStreamingBucketWriterRole.grantAssumeRole(deliveryStream.grantPrincipal)
+		// managementAccountEventStreamingBucketWriterRole.grantAssumeRole(deliveryStream.grantPrincipal)
 		const deliveryStreamWriterRole = new Role(
 			this,
 			"DefaultFirehoseDeliveryStreamWriterRole",
@@ -363,8 +371,13 @@ export class PinpointTenantAccount extends Construct {
 				}),
 			},
 		);
+		const deliveryStream = DeliveryStream.fromDeliveryStreamArn(
+			this,
+			"DefaultFirehoseDeliveryStream",
+			deliveryStreamCfn.attrArn,
+		);
 		deliveryStream.grantPutRecords(deliveryStreamWriterRole);
-
+		managementAccountEventStreamingBucketWriterRole.grantAssumeRole(deliveryStream.grantPrincipal)
 		const eventDestination = new KinesisFirehoseEventDestination(
 			this,
 			"KinesisFirehoseEventDestination",

@@ -15,17 +15,18 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import { Logger } from "@aws-lambda-powertools/logger";
-import { logMetrics, Metrics } from "@aws-lambda-powertools/metrics";
-import { captureLambdaHandler, Tracer } from "@aws-lambda-powertools/tracer";
-
+import {Logger} from "@aws-lambda-powertools/logger";
+import {Metrics} from "@aws-lambda-powertools/metrics";
+import {Tracer} from "@aws-lambda-powertools/tracer";
+import {captureLambdaHandler} from '@aws-lambda-powertools/tracer/middleware';
+import {logMetrics} from '@aws-lambda-powertools/metrics/middleware';
 import middy from "@middy/core";
 import {
   CloudFormationCustomResourceEvent,
   CloudFormationCustomResourceHandler,
 } from "aws-lambda";
-import { Aws, AwsApiCalls } from "./Aws";
-import { sendResponse, Status } from "./CfnResponse";
+import {Aws, AwsApiCalls} from "./Aws";
+import {sendResponse, Status} from "./CfnResponse";
 
 const logger = new Logger({
   serviceName: "ConfigurationSet",
@@ -52,58 +53,58 @@ export const onEventHandler: CloudFormationCustomResourceHandler = async (
   let physicalResourceId: string | undefined = undefined;
   try {
     switch (event.RequestType) {
-      case "Create":
-        logger.info("Creating configuration set");
-        const createResponse = await aws.createConfigurationSet({
-          ConfigurationSetName: event.ResourceProperties.Name,
-        });
-        logger.info(`Response: ${JSON.stringify(createResponse)}`);
-        physicalResourceId = createResponse.ConfigurationSetName;
-        await sendResponse(
-          event,
-          context,
-          Status.SUCCESS,
-          createResponse,
-          physicalResourceId,
-        );
-        break;
-      case "Delete":
-        physicalResourceId = event.PhysicalResourceId;
-        logger.info(`Deleting configuration set ${physicalResourceId}`);
-        const deleteResponse = await aws.deleteConfigurationSet({
-          ConfigurationSetName: physicalResourceId,
-        });
-        logger.info(`Response: ${JSON.stringify(deleteResponse)}`);
-        await sendResponse(
-          event,
-          context,
-          Status.SUCCESS,
-          deleteResponse,
-          physicalResourceId,
-        );
-        break;
-      case "Update":
-        physicalResourceId = event.PhysicalResourceId;
-        // logger.info(`Updating phone pool ${physicalResourceId}`);
-        // const updatePhonePoolResponse = await aws.updatePhonePool({
-        // 	PoolId: physicalResourceId,
-        // 	DeletionProtectionEnabled: event.ResourceProperties.DeletionProtectionEnabled,
-        // 	OptOutListName: event.ResourceProperties.OptOutListName,
-        // 	SelfManagedOptOutsEnabled: event.ResourceProperties.SelfManagedOptOutsEnabled,
-        // 	SharedRoutesEnabled: event.ResourceProperties.SharedRoutesEnabled,
-        // 	TwoWayChannelArn: event.ResourceProperties.TwoWayChannelArn,
-        // 	TwoWayChannelRole: event.ResourceProperties.TwoWayChannelRole,
-        // 	TwoWayEnabled: event.ResourceProperties.TwoWayEnabled
-        // })
-        // logger.info(`Response: ${JSON.stringify(updatePhonePoolResponse)}`);
-        await sendResponse(
-          event,
-          context,
-          Status.SUCCESS,
-          {},
-          physicalResourceId,
-        );
-        break;
+    case "Create":
+      logger.info("Creating configuration set");
+      const createResponse = await aws.createConfigurationSet({
+        ConfigurationSetName: event.ResourceProperties.Name,
+      });
+      logger.info(`Response: ${JSON.stringify(createResponse)}`);
+      physicalResourceId = createResponse.ConfigurationSetName;
+      await sendResponse(
+        event,
+        context,
+        Status.SUCCESS,
+        createResponse,
+        physicalResourceId,
+      );
+      break;
+    case "Delete":
+      physicalResourceId = event.PhysicalResourceId;
+      logger.info(`Deleting configuration set ${physicalResourceId}`);
+      const deleteResponse = await aws.deleteConfigurationSet({
+        ConfigurationSetName: physicalResourceId,
+      });
+      logger.info(`Response: ${JSON.stringify(deleteResponse)}`);
+      await sendResponse(
+        event,
+        context,
+        Status.SUCCESS,
+        deleteResponse,
+        physicalResourceId,
+      );
+      break;
+    case "Update":
+      physicalResourceId = event.PhysicalResourceId;
+      // logger.info(`Updating phone pool ${physicalResourceId}`);
+      // const updatePhonePoolResponse = await aws.updatePhonePool({
+      // 	PoolId: physicalResourceId,
+      // 	DeletionProtectionEnabled: event.ResourceProperties.DeletionProtectionEnabled,
+      // 	OptOutListName: event.ResourceProperties.OptOutListName,
+      // 	SelfManagedOptOutsEnabled: event.ResourceProperties.SelfManagedOptOutsEnabled,
+      // 	SharedRoutesEnabled: event.ResourceProperties.SharedRoutesEnabled,
+      // 	TwoWayChannelArn: event.ResourceProperties.TwoWayChannelArn,
+      // 	TwoWayChannelRole: event.ResourceProperties.TwoWayChannelRole,
+      // 	TwoWayEnabled: event.ResourceProperties.TwoWayEnabled
+      // })
+      // logger.info(`Response: ${JSON.stringify(updatePhonePoolResponse)}`);
+      await sendResponse(
+        event,
+        context,
+        Status.SUCCESS,
+        {},
+        physicalResourceId,
+      );
+      break;
     }
   } catch (e) {
     const error = e as Error;
@@ -114,5 +115,5 @@ export const onEventHandler: CloudFormationCustomResourceHandler = async (
 };
 
 export const onEvent = middy(onEventHandler)
-  .use(captureLambdaHandler(tracer))
-  .use(logMetrics(metrics, { captureColdStartMetric: true }));
+.use(captureLambdaHandler(tracer))
+.use(logMetrics(metrics, {captureColdStartMetric: true}));

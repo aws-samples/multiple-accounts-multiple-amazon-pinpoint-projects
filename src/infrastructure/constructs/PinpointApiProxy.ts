@@ -33,6 +33,8 @@ import {NodejsFunction} from "aws-cdk-lib/aws-lambda-nodejs";
 import {Runtime, Tracing} from "aws-cdk-lib/aws-lambda";
 import {CognitoAuthorization} from "./CognitoAuthorization";
 import {CustomDomainOptions} from "aws-cdk-lib/aws-cognito/lib/user-pool-domain";
+import {Database} from "./Database";
+import {IVpc,  SecurityGroup, SubnetType} from "aws-cdk-lib/aws-ec2";
 
 // import * as fs from "fs";
 
@@ -46,6 +48,9 @@ export interface PinpointApiProxyConfig {
 	crossAccountZoneDelegationRoleArn?: string
 	apiStageName?: string
 	pinpointTenantsTable: ITable
+	database: Database
+	vpc: IVpc
+	lambdaSecurityGroup: SecurityGroup
 }
 
 export class PinpointApiProxy extends Construct implements IDependable {
@@ -187,6 +192,51 @@ export class PinpointApiProxy extends Construct implements IDependable {
 			},
 		);
 		integrationRequestFn.grantInvoke(tenantRouterStateMachineRole)
+		const usagePercentageFnLogGroup = new LogGroup(this, "UsagePercentageFnLogGroup", {
+			retention: RetentionDays.ONE_MONTH,
+		});
+		const usagePercentageFn = new NodejsFunction(
+			this,
+			"UsagePercentageFn",
+			{
+				description: "Query the current usage % for an account",
+				memorySize: 256,
+				timeout: Duration.seconds(30),
+				runtime: Runtime.NODEJS_LATEST,
+				handler: "index.onEvent",
+				entry: path.join(__dirname, "..", "..", "runtime", "UsagePercentage.ts"),
+				logGroup: usagePercentageFnLogGroup,
+				vpc: config.vpc,
+				vpcSubnets: {
+					subnetType: SubnetType.PRIVATE_ISOLATED
+				},
+				securityGroups: [config.lambdaSecurityGroup],
+				environment: {
+					LOG_LEVEL: "DEBUG",
+					DB_CLUSTER_ARN: config.database.cluster.clusterArn,
+					DB_SECRET_ARN: config.database.cluster.secret?.secretArn as string,
+					DB_NAME: config.database.defaultDatabaseName
+				},
+				tracing: Tracing.ACTIVE,
+				initialPolicy: [
+					new PolicyStatement({
+						effect: Effect.ALLOW,
+						actions: [
+							'rds-data:ExecuteStatement',
+							'rds-data:BatchExecuteStatement',
+							'rds-data:BeginTransaction',
+							'rds-data:CommitTransaction',
+							'rds-data:RollbackTransaction'
+						],
+						resources: [config.database.cluster.clusterArn]
+					})
+				]
+			},
+		);
+		config.database.cluster.secret?.grantRead(usagePercentageFn);
+		usagePercentageFn.grantInvoke(tenantRouterStateMachineRole)
+
+
 		const tenantRouterStateMachine = new StateMachine(this, "TenantRouterStateMachine", {
 			definitionBody: DefinitionBody.fromFile(path.join(__dirname, "..", "state-machines", "TenantRouterStateMachine.asl.json")),
 			stateMachineName: "PinpointTenantRouterStateMachine",
@@ -202,7 +252,8 @@ export class PinpointApiProxy extends Construct implements IDependable {
 			definitionSubstitutions: {
 				TABLE_NAME: config.pinpointTenantsTable.tableName,
 				INPUT_VALIDATION_FN_ARN: inputValidationFn.functionArn,
-				INTEGRATION_REQUEST_FN_ARN: integrationRequestFn.functionArn
+				INTEGRATION_REQUEST_FN_ARN: integrationRequestFn.functionArn,
+				USAGE_PERCENTAGE_FN_ARN: usagePercentageFn.functionArn
 			}
 		})
 		inputValidationFn.grantInvoke(tenantRouterStateMachineRole)

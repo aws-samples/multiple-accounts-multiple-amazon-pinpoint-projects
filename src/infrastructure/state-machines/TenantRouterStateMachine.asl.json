@@ -133,6 +133,16 @@
           "StringEquals": "DescribeRegistrationFieldValues",
           "Next": "Validate Input (DescribeRegistrationFieldValues)",
           "Comment": "DescribeRegistrationFieldValues"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "DescribeSpendLimits",
+          "Next": "LambdValidate Input (DescribeSpendLimits) Invoke"
+        },
+        {
+          "Variable": "$.action",
+          "StringEquals": "UsagePercentage",
+          "Next": "LambdValidate Input (DescribeSpendLimits) Invoke"
         }
       ],
       "Default": "Action not found"
@@ -677,6 +687,95 @@
       "Credentials": {
         "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
       }
+    },
+    "LambdValidate Input (DescribeSpendLimits) Invoke": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${INPUT_VALIDATION_FN_ARN}",
+        "Payload": {
+          "action.$": "$.action",
+          "accountId.$": "$.accountId",
+          "region.$": "$.region",
+          "input.$": "$.input",
+          "definition": {
+            "required": [],
+            "optional": [
+              "MaxResults",
+              "NextToken"
+            ]
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Next": "DescribeSpendLimits"
+    },
+    "DescribeSpendLimits": {
+      "Type": "Task",
+      "Parameters": {
+        "MaxResults.$": "$.input.MaxResults",
+        "NextToken.$": "$.input.NextToken"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:pinpointsmsvoicev2:describeSpendLimits",
+      "Credentials": {
+        "RoleArn.$": "States.Format('arn:aws:iam::{}:role/PinpointManagementAccountAccessRole', $.accountId)"
+      },
+      "Next": "Action was?",
+      "ResultPath": "$.DescribeSpendLimitsResults"
+    },
+    "Action was?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.action",
+          "StringEquals": "UsagePercentage",
+          "Next": "LambdValidate Input (UsagePercentage) Invoke"
+        }
+      ],
+      "Default": "Was DescribeSpendLimits"
+    },
+    "LambdValidate Input (UsagePercentage) Invoke": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "${USAGE_PERCENTAGE_FN_ARN}",
+        "Payload.$": "$"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "End": true
+    },
+    "Was DescribeSpendLimits": {
+      "Type": "Pass",
+      "End": true,
+      "OutputPath": "$.DescribeSpendLimitsResults"
     }
   }
 }

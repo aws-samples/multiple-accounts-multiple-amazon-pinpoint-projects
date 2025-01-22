@@ -15,7 +15,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {Stack, StackProps, Tags} from "aws-cdk-lib";
+import {Stack, StackProps} from "aws-cdk-lib";
 import {PinpointManagementAccount, PinpointManagementAccountConfig} from "../constructs/PinpointManagementAccount";
 import {NagSuppressions} from "cdk-nag";
 import {ProjectUsage} from "../constructs/ProjectUsage";
@@ -33,16 +33,11 @@ export class PinpointManagementAccountStack extends Stack {
 		props: PinpointManagementAccountStackProps,
 	) {
 		super(scope, id, props);
-		const managment=new PinpointManagementAccount(this, "PinpointManagementAccount", props);
+		const management=new PinpointManagementAccount(this, "PinpointManagementAccount", props);
 		ProjectUsage.on(this,{
 			name: PROJECT_NAME,
 			url: GIT_REPO_URL
-		}).waitFor(managment)
-		Tags.of(this).add("Solution", PROJECT_NAME);
-		Tags.of(this).add(
-			"Url",
-			GIT_REPO_URL,
-		);
+		}).waitFor(management)
 		this.cdkNagSuppressions()
 	}
 
@@ -74,6 +69,9 @@ export class PinpointManagementAccountStack extends Stack {
 			},{
 				id: "AwsSolutions-APIG3",
 				reason: "No  WAFv2 web ACL on api, allow customer to choose if they want to enable",
+			},{
+				id:"AwsSolutions-COG3",
+				reason:"AdvancedSecurityMode has been deprecated"
 			}
 
 

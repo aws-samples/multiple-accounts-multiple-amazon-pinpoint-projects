@@ -23,7 +23,7 @@ const project = new awscdk.AwsCdkTypeScriptApp({
 	cdkVersion: `${execSync("npm show 'aws-cdk-lib' version")}`.trim(),
 	defaultReleaseBranch: "main",
 	name: "multiple-accounts-multiple-amazon-pinpoint-projects",
-	packageManager: javascript.NodePackageManager.NPM,
+	packageManager: javascript.NodePackageManager.PNPM,
 	projenrcTs: true,
 	appEntrypoint: "infrastructure/main.ts",
 	gitignore: [".DS_Store", ".idea", "*.iml", ".$*", "appsec"],
@@ -50,6 +50,7 @@ const project = new awscdk.AwsCdkTypeScriptApp({
 	github: false,
 	releaseTrigger: ReleaseTrigger.manual({}),
 	majorVersion: 0,
+	maxNodeVersion: "v22",
 	deps: [
 		"@aws-sdk/client-dynamodb",
 		"@aws-sdk/util-dynamodb",
@@ -58,26 +59,29 @@ const project = new awscdk.AwsCdkTypeScriptApp({
 		"@aws-sdk/client-pinpoint-sms-voice-v2",
 		"@aws-sdk/client-eventbridge",
 		"@types/aws-lambda",
-		"@middy/core",
-		"@aws-lambda-powertools/metrics",
-		"@aws-lambda-powertools/logger",
-		"@aws-lambda-powertools/tracer",
-		"@aws-lambda-powertools/batch",
+		"@middy/core@^6",
+		"@aws-lambda-powertools/metrics@^2",
+		"@aws-lambda-powertools/logger@^2",
+		"@aws-lambda-powertools/tracer@^2",
+		"@aws-lambda-powertools/batch@^2",
 		"aws-xray-sdk",
+		"@aws-sdk/client-rds-data"
+
 
 	] /* Runtime dependencies of this module. */,
 	// description: undefined,  /* The description is just a string that helps people understand the purpose of the package. */
 	devDeps: [
 		"@aws-cdk/aws-kinesisfirehose-alpha",
 		"@aws-cdk/aws-kinesisfirehose-destinations-alpha",
-		"cdk-assets",
-		"@npmcli/arborist",
-		"@types/npm-packlist",
-		"@types/npmcli__arborist",
-		"cdk-nag",
-		"ts-sinon",
-		"vitest"
 
+		"cdk-assets",
+		"@npmcli/arborist@^9",
+		"@types/npm-packlist",
+		"@types/npmcli__arborist@^6",
+		"cdk-nag@^2",
+		"ts-sinon",
+		"vitest@^3",
+		'@types/node@^22'
 
 	],
 });

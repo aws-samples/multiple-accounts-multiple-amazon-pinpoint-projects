@@ -88,7 +88,6 @@ if (stack == "PinpointManagementAccountStack") {
 	if (app.node.validate().length == 0) {
 		new PinpointTenantAccountStack(app, "PinpointTenantAccountStack", {
 			tenantId: tenantId,
-
 			managementAccountId: managementAccountId,
 			eventStreamingBucketName: eventStreamingBucketName,
 			targetEventBusArn: targetEventBusArn,

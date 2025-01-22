@@ -72,12 +72,13 @@ import {
 import {
   GetBucketPolicyCommand,
   GetBucketPolicyCommandInput,
-  GetBucketPolicyCommandOutput,
+  GetBucketPolicyCommandOutput, GetObjectCommand, GetObjectCommandInput, GetObjectCommandOutput,
   PutBucketPolicyCommand,
   PutBucketPolicyCommandInput,
   PutBucketPolicyCommandOutput,
   S3Client,
 } from "@aws-sdk/client-s3";
+import {ExecuteStatementCommand, ExecuteStatementCommandInput, ExecuteStatementCommandOutput, RDSDataClient} from "@aws-sdk/client-rds-data";
 
 export interface AwsApiCalls {
   putBucketPolicy(
@@ -97,6 +98,10 @@ export interface AwsApiCalls {
   deleteItem(input: DeleteItemCommandInput): Promise<DeleteItemCommandOutput>;
 
   putEvents(input: PutEventsCommandInput): Promise<PutEventsCommandOutput>;
+
+  getObject(input:GetObjectCommandInput):Promise<GetObjectCommandOutput>;
+
+  executeStatement(input:ExecuteStatementCommandInput):Promise<ExecuteStatementCommandOutput>;
 
   updateEventDestination(
     input: UpdateEventDestinationCommandInput,
@@ -157,6 +162,7 @@ export class Aws implements AwsApiCalls {
   private _pinpointSMSVoiceV2Client: PinpointSMSVoiceV2Client | undefined;
   private config: { [key: string]: any | undefined };
   private _tracer: Tracer | undefined;
+  private _rdsDataClient:RDSDataClient|undefined;
 
   private constructor(
     config: { [key: string]: any | undefined } = {},
@@ -171,6 +177,15 @@ export class Aws implements AwsApiCalls {
     tracer: Tracer | undefined = undefined,
   ): AwsApiCalls {
     return new Aws(config, tracer);
+  }
+
+  private get rdsDataClient(): RDSDataClient {
+    if (this._rdsDataClient == undefined) {
+      this._rdsDataClient = this._tracer
+        ? this._tracer.captureAWSv3Client(new RDSDataClient(this.config))
+        : new RDSDataClient(this.config);
+    }
+    return this._rdsDataClient;
   }
 
   private get s3Client(): S3Client {
@@ -195,8 +210,8 @@ export class Aws implements AwsApiCalls {
     if (this._pinpointSMSVoiceV2Client == undefined) {
       this._pinpointSMSVoiceV2Client = this._tracer
         ? this._tracer.captureAWSv3Client(
-            new PinpointSMSVoiceV2Client(this.config),
-          )
+          new PinpointSMSVoiceV2Client(this.config),
+        )
         : new PinpointSMSVoiceV2Client(this.config);
     }
     return this._pinpointSMSVoiceV2Client;
@@ -207,11 +222,11 @@ export class Aws implements AwsApiCalls {
     if (this._ddbClient == undefined) {
       this._ddbClient = this._tracer
         ? this._tracer.captureAWSv3Client(
-            new DynamoDBClient({
-              ...this.config,
-              retryMode: "adaptive",
-            }),
-          )
+          new DynamoDBClient({
+            ...this.config,
+            retryMode: "adaptive",
+          }),
+        )
         : new DynamoDBClient(this.config);
     }
     return this._ddbClient;
@@ -327,5 +342,12 @@ export class Aws implements AwsApiCalls {
     input: GetBucketPolicyCommandInput,
   ): Promise<GetBucketPolicyCommandOutput> {
     return this.s3Client.send(new GetBucketPolicyCommand(input));
+  }
+
+  async getObject(input:GetObjectCommandInput):Promise<GetObjectCommandOutput>{
+    return this.s3Client.send(new GetObjectCommand(input));
+  }
+  async executeStatement(input:ExecuteStatementCommandInput):Promise<ExecuteStatementCommandOutput>{
+    return this.rdsDataClient.send(new ExecuteStatementCommand(input));
   }
 }

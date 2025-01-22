@@ -33,6 +33,7 @@ describe('InputValidation', () => {
 				]
 			},
 			"accountId": "123456789012",
+			"action": "UsagePercentage",
 			"input": [
 				{
 					"Key": "RegistrationTypes",
@@ -64,6 +65,7 @@ describe('InputValidation', () => {
 					"value": "somevalue"
 				}
 			},
+			"action": "UsagePercentage",
 			"accountId": "123456789012",
 			"region": [
 				"us-east-1"

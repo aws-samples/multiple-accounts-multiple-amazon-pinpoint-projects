@@ -16,11 +16,12 @@
  */
 
 import middy from "@middy/core";
-import {captureLambdaHandler, Tracer} from "@aws-lambda-powertools/tracer";
-import {logMetrics, Metrics} from "@aws-lambda-powertools/metrics";
+import { Tracer} from "@aws-lambda-powertools/tracer";
+import { Metrics} from "@aws-lambda-powertools/metrics";
 import {Logger} from "@aws-lambda-powertools/logger";
 import {Field} from "../index";
-
+import {captureLambdaHandler} from '@aws-lambda-powertools/tracer/middleware';
+import {logMetrics} from '@aws-lambda-powertools/metrics/middleware';
 const logger = new Logger({
 	serviceName: "InputValidation",
 });

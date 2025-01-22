@@ -16,9 +16,10 @@
  */
 
 import { Logger } from "@aws-lambda-powertools/logger";
-import { logMetrics, Metrics } from "@aws-lambda-powertools/metrics";
-import { captureLambdaHandler, Tracer } from "@aws-lambda-powertools/tracer";
-
+import {  Metrics } from "@aws-lambda-powertools/metrics";
+import {  Tracer } from "@aws-lambda-powertools/tracer";
+import {captureLambdaHandler} from '@aws-lambda-powertools/tracer/middleware';
+import {logMetrics} from '@aws-lambda-powertools/metrics/middleware';
 import middy from "@middy/core";
 import {
   CloudFormationCustomResourceEvent,

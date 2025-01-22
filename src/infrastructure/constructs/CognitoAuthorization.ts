@@ -16,7 +16,7 @@
  */
 
 import {Construct, Dependable, IDependable} from "constructs";
-import {AdvancedSecurityMode, CfnUserPoolGroup, CfnUserPoolUser, CfnUserPoolUserToGroupAttachment, OAuthScope, ResourceServerScope, UserPool, UserPoolDomain} from "aws-cdk-lib/aws-cognito";
+import {CfnUserPoolGroup, CfnUserPoolUser, CfnUserPoolUserToGroupAttachment, FeaturePlan, OAuthScope, ResourceServerScope, UserPool, UserPoolDomain} from "aws-cdk-lib/aws-cognito";
 import {AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId} from "aws-cdk-lib/custom-resources";
 import {Aws, CfnOutput, Duration} from "aws-cdk-lib";
 import {CustomDomainOptions} from "aws-cdk-lib/aws-cognito/lib/user-pool-domain";
@@ -59,7 +59,9 @@ export class CognitoAuthorization extends Construct implements IDependable {
 		const userPoolName = 'pinpoint-management-account-user-pool'
 		this.userPool = new UserPool(this, 'UserPool', {
 			userPoolName: userPoolName,
-			advancedSecurityMode: AdvancedSecurityMode.ENFORCED,
+			featurePlan:FeaturePlan.LITE,
+			selfSignUpEnabled: false,
+
 			passwordPolicy: {
 				minLength: 9,
 				requireDigits: true,
@@ -178,7 +180,7 @@ export class CognitoAuthorization extends Construct implements IDependable {
 			const cname = new CnameRecord(this, "AuthCnameRecord", {
 				recordName: config.customDomain.domainName,
 				zone: config.hostedZone,
-				domainName: this.customUserPoolDomain.cloudFrontDomainName
+				domainName: this.customUserPoolDomain.cloudFrontEndpoint
 			})
 			cname.node.addDependency(this.customUserPoolDomain)
 			new CfnOutput(this, "UserPoolDomainBaseUrlOutput", {

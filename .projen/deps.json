@@ -10,6 +10,7 @@
     },
     {
       "name": "@npmcli/arborist",
+      "version": "^9",
       "type": "build"
     },
     {
@@ -23,6 +24,7 @@
     },
     {
       "name": "@types/npmcli__arborist",
+      "version": "^6",
       "type": "build"
     },
     {
@@ -37,7 +39,7 @@
     },
     {
       "name": "aws-cdk",
-      "version": "^2.130.0",
+      "version": "^2.176.0",
       "type": "build"
     },
     {
@@ -46,6 +48,7 @@
     },
     {
       "name": "cdk-nag",
+      "version": "^2",
       "type": "build"
     },
     {
@@ -95,22 +98,27 @@
     },
     {
       "name": "vitest",
+      "version": "^3",
       "type": "build"
     },
     {
       "name": "@aws-lambda-powertools/batch",
+      "version": "^2",
       "type": "runtime"
     },
     {
       "name": "@aws-lambda-powertools/logger",
+      "version": "^2",
       "type": "runtime"
     },
     {
       "name": "@aws-lambda-powertools/metrics",
+      "version": "^2",
       "type": "runtime"
     },
     {
       "name": "@aws-lambda-powertools/tracer",
+      "version": "^2",
       "type": "runtime"
     },
     {
@@ -123,6 +131,10 @@
     },
     {
       "name": "@aws-sdk/client-pinpoint-sms-voice-v2",
+      "type": "runtime"
+    },
+    {
+      "name": "@aws-sdk/client-rds-data",
       "type": "runtime"
     },
     {
@@ -139,6 +151,7 @@
     },
     {
       "name": "@middy/core",
+      "version": "^6",
       "type": "runtime"
     },
     {
@@ -147,7 +160,7 @@
     },
     {
       "name": "aws-cdk-lib",
-      "version": "^2.130.0",
+      "version": "^2.176.0",
       "type": "runtime"
     },
     {

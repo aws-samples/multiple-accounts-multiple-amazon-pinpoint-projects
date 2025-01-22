@@ -33,8 +33,10 @@
  */
 
 import middy from "@middy/core";
-import {captureLambdaHandler, Tracer} from "@aws-lambda-powertools/tracer";
-import {logMetrics, Metrics} from "@aws-lambda-powertools/metrics";
+import { Tracer} from "@aws-lambda-powertools/tracer";
+import { Metrics} from "@aws-lambda-powertools/metrics";
+import {captureLambdaHandler} from '@aws-lambda-powertools/tracer/middleware';
+import {logMetrics} from '@aws-lambda-powertools/metrics/middleware';
 import {Logger} from "@aws-lambda-powertools/logger";
 import {Field} from "../index";
 
@@ -77,10 +79,7 @@ function toFields(input: Record<string, any | undefined> | undefined): Field[] {
 		for (const fieldName in input) {
 			const value = input[fieldName]
 			if (value != null) {
-				if(fieldName.endsWith(".ignore")){
-					 output.push({Key:fieldName.replace(".ignore",""),Value:value})
-				}
-				else if (Array.isArray(value)) {
+				if (Array.isArray(value)) {
 					const subOutput:any[] = []
 					let idx = 0
 					for (const item of value) {
