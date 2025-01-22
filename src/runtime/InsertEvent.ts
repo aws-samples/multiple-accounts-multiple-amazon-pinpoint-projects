@@ -74,7 +74,7 @@ interface EndUserMessagingEvent {
 	eventVersion: string,
 	eventTimestamp: number,
 	isFinal: boolean,
-	originationPhoneNumber: string,
+	originationPhoneNumber?: string,
 	destinationPhoneNumber: string,
 	isoCountryCode: string,
 	messageId: string,
@@ -86,7 +86,7 @@ interface EndUserMessagingEvent {
 	totalMessageParts: number,
 	totalMessagePrice: number,
 	totalCarrierFee: number,
-	protectConfiguration: {
+	protectConfiguration?: {
 		protectConfigurationId: string,
 		protectStatus: string
 	}
@@ -236,8 +236,8 @@ async function processEndUserMessagingEvent(event: EndUserMessagingEvent, aws: A
 			{name: 'totalMessageParts', value: {longValue: event.totalMessageParts}},
 			{name: 'totalMessagePrice', value: {doubleValue: event.totalMessagePrice}},
 			{name: 'totalCarrierFee', value: {doubleValue: event.totalCarrierFee}},
-			{name: 'protectConfigurationId', value: {stringValue: event.protectConfiguration.protectConfigurationId}},
-			{name: 'protectStatus', value: {stringValue: event.protectConfiguration.protectStatus}},
+			{name: 'protectConfigurationId',  value: event.protectConfiguration ? {stringValue: event.protectConfiguration.protectConfigurationId} : {isNull: true} },
+			{name: 'protectStatus', value: event.protectConfiguration ? {stringValue: event.protectConfiguration.protectStatus} : {isNull: true} },
 			{name: 'accountId', value: event.accountId ? {stringValue: event.accountId} : {isNull: true}}
 		]
 	};

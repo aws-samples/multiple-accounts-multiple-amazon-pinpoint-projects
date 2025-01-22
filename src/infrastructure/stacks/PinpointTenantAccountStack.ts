@@ -24,6 +24,7 @@ import {
 // import {NagSuppressions} from "cdk-nag";
 import {ProjectUsage} from "../constructs/ProjectUsage";
 import {GIT_REPO_URL, PROJECT_NAME} from "../../index";
+import {NagSuppressions} from "cdk-nag";
 
 export interface PinpointTenantAccountStackProps
 	extends StackProps,
@@ -38,31 +39,31 @@ export class PinpointTenantAccountStack extends Stack {
 			url: GIT_REPO_URL
 		}).waitFor(tenant)
 		Tags.of(this).add("Timestamp", new Date().toISOString());
-		// this.cdkNagSuppressions();
+		this.cdkNagSuppressions();
 	}
 
-	// private cdkNagSuppressions() {
-	//   NagSuppressions.addStackSuppressions(this, [
-	//     {
-	//       id: "AwsSolutions-L1",
-	//       reason: "Manually managing runtimes",
-	//     },
-	//     {
-	//       id: "AwsSolutions-IAM5",
-	//       reason: "Wildcard permissions allowed because the roles are scope with conditions or account principals",
-	//     },
-	//     {
-	//       id: "AwsSolutions-IAM4",
-	//       reason: "Managed policies ok",
-	//     }
-	//
-	//   ]);
-	//   NagSuppressions.addResourceSuppressionsByPath(this,"/PinpointTenantAccountStack/PinpointTenantAccount/PinpointTenantRegistrationRuleDLQ/Resource",[{
-	//
-	//       id: "AwsSolutions-SQS3",
-	//       reason: "This is a DLQ for an EventBridge EventBus",
-	//
-	//   }])
-	//
-	// }
+	private cdkNagSuppressions() {
+	  NagSuppressions.addStackSuppressions(this, [
+	    {
+	      id: "AwsSolutions-L1",
+	      reason: "Manually managing runtimes",
+	    },
+	    {
+	      id: "AwsSolutions-IAM5",
+	      reason: "Wildcard permissions allowed because the roles are scope with conditions or account principals",
+	    },
+	    {
+	      id: "AwsSolutions-IAM4",
+	      reason: "Managed policies ok",
+	    }
+
+	  ]);
+	  NagSuppressions.addResourceSuppressionsByPath(this,"/PinpointTenantAccountStack/PinpointTenantAccount/PinpointTenantRegistrationRuleDLQ/Resource",[{
+
+	      id: "AwsSolutions-SQS3",
+	      reason: "This is a DLQ for an EventBridge EventBus",
+
+	  }])
+
+	}
 }

@@ -198,13 +198,14 @@ export class PinpointManagementAccount extends Construct {
 				resources: [this.eventBus.eventBusArn],
 			}),
 		);
-		const logGroup = new LogGroup(this, "TenantRegistrarFnLogGroup", {
-			retention: RetentionDays.ONE_MONTH,
-		});
+
 		const lambdaSecurityGroup = new SecurityGroup(this, "LambdaSecurityGroup", {
 			allowAllOutbound: true,
 			vpc
 		})
+		const insertEventFnLogGroup = new LogGroup(this, "InsertEventFnLogGroup", {
+			retention: RetentionDays.ONE_MONTH,
+		});
 		const insertEventFunction = new NodejsFunction(
 			this,
 			"InsertEventFn",
@@ -226,7 +227,7 @@ export class PinpointManagementAccount extends Construct {
 					subnetType: SubnetType.PRIVATE_ISOLATED
 				},
 				securityGroups: [lambdaSecurityGroup],
-				logGroup: logGroup,
+				logGroup: insertEventFnLogGroup,
 				environment: {
 					LOG_LEVEL: "DEBUG",
 					EVENT_BUCKET_NAME: this.eventBucket.bucketName,
@@ -263,6 +264,9 @@ export class PinpointManagementAccount extends Construct {
 		}))
 		this.eventBucket.grantRead(insertEventFunction);
 		database.cluster.secret?.grantRead(insertEventFunction);
+		const tenantRegistrarFnLogGroup = new LogGroup(this, "TenantRegistrarFnLogGroup", {
+			retention: RetentionDays.ONE_MONTH,
+		});
 		const tenantRegistrarFunction = new NodejsFunction(
 			this,
 			"TenantRegistrarFn",
@@ -279,7 +283,7 @@ export class PinpointManagementAccount extends Construct {
 					"runtime",
 					"TenantRegistrar.ts",
 				),
-				logGroup: logGroup,
+				logGroup: tenantRegistrarFnLogGroup,
 
 				environment: {
 					LOG_LEVEL: "DEBUG",

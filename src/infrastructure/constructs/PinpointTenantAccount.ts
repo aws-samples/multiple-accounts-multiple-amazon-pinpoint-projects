@@ -15,10 +15,10 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {DeliveryStream} from "@aws-cdk/aws-kinesisfirehose-alpha";
+import {DeliveryStream, StreamEncryption} from "@aws-cdk/aws-kinesisfirehose-alpha";
 
 import {EventType, MessageType} from "@aws-sdk/client-pinpoint-sms-voice-v2";
-import {Aws, Duration, RemovalPolicy} from "aws-cdk-lib";
+import {Aws, Duration, RemovalPolicy, Size} from "aws-cdk-lib";
 import {EventBus, IEventBus, IRule, Rule} from "aws-cdk-lib/aws-events";
 import {EventBus as EventBusTarget} from "aws-cdk-lib/aws-events-targets";
 import {AccountPrincipal, AnyPrincipal, Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal,} from "aws-cdk-lib/aws-iam";
@@ -34,7 +34,7 @@ import {PhonePool} from "./PhonePool";
 import {TenantRegistration} from "./TenantRegistration";
 import {Queue, QueueEncryption} from "aws-cdk-lib/aws-sqs";
 import {REGISTRATION_EVENT_DETAIL_TYPE, REGISTRATION_EVENT_SOURCE} from "../../index";
-import {CfnDeliveryStream} from "aws-cdk-lib/aws-kinesisfirehose";
+import {S3Bucket} from "@aws-cdk/aws-kinesisfirehose-destinations-alpha";
 
 
 export interface PhonePoolWithNumbersConfig {
@@ -329,32 +329,25 @@ export class PinpointTenantAccount extends Construct {
 			},
 		);
 
-		const deliveryStreamCfn = new CfnDeliveryStream(
+		const deliveryStream = new DeliveryStream(
 			this,
-			"DefaultFirehoseDeliveryStreamCfn",
+			"DefaultFirehoseDeliveryStream",
 			{
-				deliveryStreamType: "DirectPut",
-				deliveryStreamEncryptionConfigurationInput: {
-					keyType: "AWS_OWNED_CMK"
-				},
-				extendedS3DestinationConfiguration: {
-					bucketArn: bucket.bucketArn,
-					roleArn: managementAccountEventStreamingBucketWriterRole.roleArn,
-					prefix: `accountId=${Aws.ACCOUNT_ID}/date=!{timestamp:yyyy-MM-dd}/`,
-					errorOutputPrefix: `${config.tenantId}/errors/accountId=${Aws.ACCOUNT_ID}/date=!{timestamp:yyyy-MM-dd}/hour=!{timestamp:HH}/!{firehose:error-output-type}/`,
-					bufferingHints: {
-						intervalInSeconds: 60,
-						sizeInMBs: 1
-					},
-					cloudWatchLoggingOptions: {
-						enabled: true,
-						logGroupName: `/aws/kinesisfirehose/DefaultFirehoseDeliveryStream`,
-						logStreamName: "S3Delivery"
-					}
-				}
-			}
+				encryption: StreamEncryption.awsOwnedKey(),
+				destination:
+					new S3Bucket(bucket, {
+						dataOutputPrefix: `accountId=${Aws.ACCOUNT_ID}/date=!{timestamp:yyyy-MM-dd}/`,
+						errorOutputPrefix: `${config.tenantId}/errors/accountId=${Aws.ACCOUNT_ID}/date=!{timestamp:yyyy-MM-dd}/hour=!{timestamp:HH}/!{firehose:error-output-type}/`,
+						role: managementAccountEventStreamingBucketWriterRole,
+						bufferingInterval: Duration.seconds(60),
+						bufferingSize: Size.mebibytes(1),
+
+					}),
+
+
+			},
 		);
-		// managementAccountEventStreamingBucketWriterRole.grantAssumeRole(deliveryStream.grantPrincipal)
+		managementAccountEventStreamingBucketWriterRole.grantAssumeRole(deliveryStream.grantPrincipal)
 		const deliveryStreamWriterRole = new Role(
 			this,
 			"DefaultFirehoseDeliveryStreamWriterRole",
@@ -371,13 +364,8 @@ export class PinpointTenantAccount extends Construct {
 				}),
 			},
 		);
-		const deliveryStream = DeliveryStream.fromDeliveryStreamArn(
-			this,
-			"DefaultFirehoseDeliveryStream",
-			deliveryStreamCfn.attrArn,
-		);
 		deliveryStream.grantPutRecords(deliveryStreamWriterRole);
-		managementAccountEventStreamingBucketWriterRole.grantAssumeRole(deliveryStream.grantPrincipal)
+
 		const eventDestination = new KinesisFirehoseEventDestination(
 			this,
 			"KinesisFirehoseEventDestination",

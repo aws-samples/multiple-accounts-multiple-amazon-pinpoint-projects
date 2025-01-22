@@ -60,7 +60,7 @@ The stack accepts the following [CDK context values](https://docs.aws.amazon.com
 * **crossAccountZoneDelegationRoleArn** - If the parent hosted zone specified by the **parentHostedZoneId** parameter is in another AWS account, specify the cross account role ARN that has access to register a subdomain with the hosted zone in that account.  *[Optional]*
 * **apiStageName** - The API stage name.  *[Optional]*
 
-`pnpm run deploy -- -c stack=PinpointManagementAccountStack -c organizationId=<YOUR_AWS_ORGANIZATION_ID> -c apiTempPassword=<API_TEMP_PASSWORD> <OTHER_PARAMETERS_DESCRIBED_ABOVE>` <-- *Requires AWS account credentials to be present on the console*
+`pnpm run deploy -c stack=PinpointManagementAccountStack -c organizationId=<YOUR_AWS_ORGANIZATION_ID> -c apiTempPassword=<API_TEMP_PASSWORD> <OTHER_PARAMETERS_DESCRIBED_ABOVE>` <-- *Requires AWS account credentials to be present on the console*
 
 After the stack deploys successfully the following output variables will be displayed
 
@@ -83,7 +83,7 @@ The stack accepts the following [CDK context values](https://docs.aws.amazon.com
 * **eventStreamingBucketName** - The value from the PinpointManagementAccountStack.EventBucketName output.  *[Required]*
 * **targetEventBusArn** - The value from the PinpointManagementAccountStack.EventBusArn output.  *[Required]*
 
-`pnpm run deploy -- -c stack=PinpointTenantAccountStack -c tenantId=<PINPOINT_TENANT_NAME> -c managementAccountId=<PINPOINT_MANAGEMENT_ACCOUNT_ID> -c eventStreamingBucketName=<PinpointManagementAccountStack.EventBucketName> -c targetEventBusArn=<PinpointManagementAccountStack.EventBusArn>` <-- *Requires AWS account credentials to be present on the console*
+`pnpm run deploy -c stack=PinpointTenantAccountStack -c tenantId=<PINPOINT_TENANT_NAME> -c managementAccountId=<PINPOINT_MANAGEMENT_ACCOUNT_ID> -c eventStreamingBucketName=<PinpointManagementAccountStack.EventBucketName> -c targetEventBusArn=<PinpointManagementAccountStack.EventBusArn>` <-- *Requires AWS account credentials to be present on the console*
 
 
 ### Invoke the API
