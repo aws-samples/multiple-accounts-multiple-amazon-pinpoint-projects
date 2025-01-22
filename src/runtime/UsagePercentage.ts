@@ -132,7 +132,7 @@ export const onEventHandler = async (
 			usage_percentage: (parseFloat(record.total_spend) / monthlySpendLimit) * 100
 		}));
 
-		return {body: JSON.stringify(usage, null, 2)};
+		return {body: usage};
 
 	} catch (error) {
 		logger.error(`Error in onEventHandler: ${error}`);
