@@ -743,12 +743,12 @@
         {
           "Variable": "$.action",
           "StringEquals": "UsagePercentage",
-          "Next": "LambdValidate Input (UsagePercentage) Invoke"
+          "Next": "UsagePercentage Invoke"
         }
       ],
       "Default": "Was DescribeSpendLimits"
     },
-    "LambdValidate Input (UsagePercentage) Invoke": {
+    "UsagePercentage Invoke": {
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
       "OutputPath": "$.Payload",
